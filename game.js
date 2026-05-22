@@ -26,6 +26,25 @@ const state = {
   isGameOver: false,
 };
 
+const STORAGE_KEY = 'tri_v_ryad_best';
+
+function loadBest() {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    return v ? parseInt(v, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveBest(score) {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(score));
+  } catch {
+    // ignore (private mode, quota, etc.)
+  }
+}
+
 // Convert a "type only" board (from logic) to a "tile object" board (with ids).
 function wrapBoard(typeBoard) {
   return typeBoard.map(row => row.map(cell => cell === null ? null : makeTile(cell)));
@@ -96,6 +115,7 @@ function render() {
 function init() {
   state.board = wrapBoard(createInitialBoard());
   state.score = 0;
+  state.bestScore = loadBest();
   state.isAnimating = false;
   state.isGameOver = false;
   render();
@@ -254,6 +274,7 @@ function showGameOver() {
   const isNewRecord = state.score > state.bestScore;
   if (isNewRecord) {
     state.bestScore = state.score;
+    saveBest(state.bestScore);
     bestMsgEl.classList.remove('hidden');
   } else {
     bestMsgEl.classList.add('hidden');
