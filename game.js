@@ -244,10 +244,35 @@ async function tilt(direction) {
   state.isAnimating = false;
 }
 
+const gameOverEl = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+const bestMsgEl = document.getElementById('best-msg');
+const restartBtn = document.getElementById('restart-btn');
+
 function showGameOver() {
-  // Filled in in Task 13
-  console.log('GAME OVER, final score:', state.score);
+  finalScoreEl.textContent = state.score;
+  const isNewRecord = state.score > state.bestScore;
+  if (isNewRecord) {
+    state.bestScore = state.score;
+    bestMsgEl.classList.remove('hidden');
+  } else {
+    bestMsgEl.classList.add('hidden');
+  }
+  renderScore();
+  gameOverEl.classList.remove('hidden');
 }
+
+function hideGameOver() {
+  gameOverEl.classList.add('hidden');
+}
+
+restartBtn.addEventListener('click', () => {
+  hideGameOver();
+  // Wipe DOM tiles before re-init
+  for (const el of tileEls.values()) el.remove();
+  tileEls.clear();
+  init();
+});
 
 // --- Keyboard ---
 window.addEventListener('keydown', (e) => {
