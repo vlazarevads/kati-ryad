@@ -130,6 +130,17 @@ function init() {
 
 const STEP_MS = 220; // matches CSS transitions
 
+const comboToastEl = document.getElementById('combo-toast');
+
+function showComboToast(multiplier) {
+  comboToastEl.textContent = `КОМБО ×${multiplier}!`;
+  comboToastEl.classList.remove('hidden');
+  // Перезапустить анимацию: убрать класс, force reflow, добавить заново
+  comboToastEl.classList.remove('popping');
+  void comboToastEl.offsetWidth;
+  comboToastEl.classList.add('popping');
+}
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -290,6 +301,7 @@ async function tilt(direction) {
           if (el) el.classList.add('removing');
         }
       }
+      if (multiplier >= 2) showComboToast(multiplier);
       state.score += scoreForWave(removeSet.size, multiplier);
       renderScore();
       multiplier++;

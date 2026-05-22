@@ -23,7 +23,9 @@
     <div class="game-area">
       <button class="dir-btn dir-up" data-dir="up" aria-label="Наклонить вверх">▲</button>
       <button class="dir-btn dir-left" data-dir="left" aria-label="Наклонить влево">◀</button>
-      <div id="board" class="board" aria-label="Игровое поле"></div>
+      <div id="board" class="board" aria-label="Игровое поле">
+        <div id="combo-toast" class="combo-toast hidden" aria-live="polite"></div>
+      </div>
       <button class="dir-btn dir-right" data-dir="right" aria-label="Наклонить вправо">▶</button>
       <button class="dir-btn dir-down" data-dir="down" aria-label="Наклонить вниз">▼</button>
     </div>
