@@ -191,3 +191,33 @@ export function resolveBoard(board, direction) {
 
   return { moved: true, board: current, score, waves };
 }
+
+export function spawnTiles(board) {
+  const result = board.map(row => row.slice());
+  const empties = [];
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (result[r][c] === null) empties.push([r, c]);
+    }
+  }
+  // shuffle
+  for (let i = empties.length - 1; i > 0; i--) {
+    const j = randInt(i + 1);
+    [empties[i], empties[j]] = [empties[j], empties[i]];
+  }
+  const toSpawn = Math.min(SPAWN_PER_TURN, empties.length);
+  for (let i = 0; i < toSpawn; i++) {
+    const [r, c] = empties[i];
+    result[r][c] = randInt(NUM_TYPES);
+  }
+  return result;
+}
+
+export function isGameOver(board) {
+  // No tilt in any of 4 directions moves a single tile → game over.
+  for (const dir of ['left', 'right', 'up', 'down']) {
+    const moved = applyGravity(board, dir);
+    if (!boardsEqual(board, moved)) return false;
+  }
+  return true;
+}

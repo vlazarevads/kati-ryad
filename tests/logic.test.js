@@ -298,3 +298,73 @@ test('resolveBoard: pre-existing match without movement does NOT trigger (turn i
   assert.equal(result.score, 0);
   assert.equal(result.waves.length, 0);
 });
+
+import { spawnTiles, isGameOver, SPAWN_PER_TURN } from '../logic.js';
+
+test('spawnTiles: adds SPAWN_PER_TURN tiles when many empty cells', () => {
+  const board = createEmptyBoard();
+  const before = board.flat().filter(c => c !== null).length;
+  const after = spawnTiles(board).flat().filter(c => c !== null).length;
+  assert.equal(after - before, SPAWN_PER_TURN);
+});
+
+test('spawnTiles: caps at empty cell count if fewer empties available', () => {
+  // fill all but 2 cells
+  const board = createEmptyBoard();
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      board[r][c] = 0;
+    }
+  }
+  board[0][0] = null;
+  board[0][1] = null;
+  const result = spawnTiles(board);
+  const empties = result.flat().filter(c => c === null).length;
+  assert.equal(empties, 0); // both spots filled
+});
+
+test('spawnTiles: returns board unchanged if no empty cells', () => {
+  const board = createEmptyBoard();
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      board[r][c] = 0;
+    }
+  }
+  const result = spawnTiles(board);
+  assert.equal(result.flat().filter(c => c === null).length, 0);
+  // total count unchanged
+  assert.equal(result.flat().length, board.flat().length);
+});
+
+test('spawnTiles: does not mutate input', () => {
+  const board = createEmptyBoard();
+  const snapshot = JSON.stringify(board);
+  spawnTiles(board);
+  assert.equal(JSON.stringify(board), snapshot);
+});
+
+test('isGameOver: full board, all corners locked → true', () => {
+  // Build a fully locked board: alternating types so no triple, all 36 cells filled
+  // and no tilt would move anything (already packed in every direction means impossible
+  // for a real 2D board — but we can construct a fully filled board and check that no
+  // tilt moves tiles AND no match exists)
+  const board = createEmptyBoard();
+  // Fill with checkerboard-like pattern of 2 types — but that creates pairs not triples
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      board[r][c] = (r + c) % 2;
+    }
+  }
+  // A fully filled board where no tilt moves anything is impossible for 2D (gravity packs differently).
+  // But it's full, and findMatches detects no triples. Let's just verify isGameOver returns true
+  // when ALL 4 tilts don't move the board.
+  // Checkerboard board: tilt left moves 0s and 1s — actually they stay put (no gaps).
+  // So board is full + no gaps + no matches possible from any tilt → game over.
+  assert.equal(isGameOver(board), true);
+});
+
+test('isGameOver: board with empty cells → false (at least one tilt moves)', () => {
+  const board = createEmptyBoard();
+  board[2][2] = 1;
+  assert.equal(isGameOver(board), false);
+});
