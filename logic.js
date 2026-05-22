@@ -4,9 +4,9 @@
 // scoreForWave.
 
 export const BOARD_SIZE = 6;
-export const NUM_TYPES = 5;
+export const NUM_TYPES = 4;
 export const INITIAL_TILES = 12;
-export const SPAWN_PER_TURN = 3;
+export const SPAWN_PER_TURN = 2;
 
 export function createEmptyBoard() {
   const board = [];

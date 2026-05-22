@@ -1,5 +1,7 @@
 import {
   BOARD_SIZE,
+  NUM_TYPES,
+  SPAWN_PER_TURN,
   createInitialBoard,
   findMatches,
   isGameOver,
@@ -199,10 +201,10 @@ function spawnWrapped(board) {
     const j = Math.floor(Math.random() * (i + 1));
     [empties[i], empties[j]] = [empties[j], empties[i]];
   }
-  const toSpawn = Math.min(3, empties.length); // SPAWN_PER_TURN = 3
+  const toSpawn = Math.min(SPAWN_PER_TURN, empties.length);
   for (let i = 0; i < toSpawn; i++) {
     const [r, c] = empties[i];
-    result[r][c] = makeTile(Math.floor(Math.random() * 5)); // NUM_TYPES = 5
+    result[r][c] = makeTile(Math.floor(Math.random() * NUM_TYPES));
   }
   return result;
 }
