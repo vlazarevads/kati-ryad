@@ -226,10 +226,16 @@ async function tilt(direction) {
     let multiplier = 1;
     while (true) {
       const matches = findMatchesWrapped(state.board);
-      if (matches.size === 0) break;
+      if (matches.length === 0) break;
+
+      // Union all match tiles into removal set
+      const removeSet = new Set();
+      for (const match of matches) {
+        for (const key of match.tiles) removeSet.add(key);
+      }
 
       // Mark tiles for removal (animation), then actually remove
-      for (const key of matches) {
+      for (const key of removeSet) {
         const [r, c] = key.split(',').map(Number);
         const tile = state.board[r][c];
         if (tile) {
@@ -237,13 +243,13 @@ async function tilt(direction) {
           if (el) el.classList.add('removing');
         }
       }
-      state.score += scoreForWave(matches.size, multiplier);
+      state.score += scoreForWave(removeSet.size, multiplier);
       renderScore();
       multiplier++;
       await delay(STEP_MS);
 
       // Remove from state.board
-      for (const key of matches) {
+      for (const key of removeSet) {
         const [r, c] = key.split(',').map(Number);
         state.board[r][c] = null;
       }
