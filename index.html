@@ -2,14 +2,42 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Кати-Ряд</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="app">
-    <h1>Кати-Ряд</h1>
-    <p>Загрузка...</p>
+    <header class="hud">
+      <div class="score-block">
+        <div class="label">Счёт</div>
+        <div id="score" class="value">0</div>
+      </div>
+      <h1 class="title">Кати-Ряд</h1>
+      <div class="score-block">
+        <div class="label">Рекорд</div>
+        <div id="best" class="value">0</div>
+      </div>
+    </header>
+
+    <div class="game-area">
+      <button class="dir-btn dir-up" data-dir="up" aria-label="Наклонить вверх">▲</button>
+      <button class="dir-btn dir-left" data-dir="left" aria-label="Наклонить влево">◀</button>
+      <div id="board" class="board" aria-label="Игровое поле"></div>
+      <button class="dir-btn dir-right" data-dir="right" aria-label="Наклонить вправо">▶</button>
+      <button class="dir-btn dir-down" data-dir="down" aria-label="Наклонить вниз">▼</button>
+    </div>
+
+    <p class="hint">Стрелки / WASD / свайп / кнопки — наклоняй поле, собирай 3+ в ряд</p>
+
+    <div id="game-over" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="overlay-card">
+        <h2>Игра окончена</h2>
+        <p>Счёт: <span id="final-score">0</span></p>
+        <p id="best-msg" class="hidden">🏆 Новый рекорд!</p>
+        <button id="restart-btn" class="primary-btn">Заново</button>
+      </div>
+    </div>
   </main>
   <script type="module" src="game.js"></script>
 </body>
