@@ -249,12 +249,63 @@ function showGameOver() {
   console.log('GAME OVER, final score:', state.score);
 }
 
+// --- Keyboard ---
 window.addEventListener('keydown', (e) => {
-  const key = e.key;
-  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-  if (map[key]) {
+  const map = {
+    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+    a: 'left', d: 'right', w: 'up', s: 'down',
+    A: 'left', D: 'right', W: 'up', S: 'down',
+  };
+  if (map[e.key]) {
     e.preventDefault();
-    tilt(map[key]);
+    tilt(map[e.key]);
+  }
+});
+
+// --- Direction buttons ---
+document.querySelectorAll('.dir-btn').forEach(btn => {
+  btn.addEventListener('click', () => tilt(btn.dataset.dir));
+});
+
+// --- Swipe on board ---
+const SWIPE_THRESHOLD = 30;
+let touchStart = null;
+
+boardEl.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+
+boardEl.addEventListener('touchend', (e) => {
+  if (!touchStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    tilt(dx > 0 ? 'right' : 'left');
+  } else {
+    tilt(dy > 0 ? 'down' : 'up');
+  }
+});
+
+// --- Mouse drag (treat like swipe on desktop, optional) ---
+let mouseStart = null;
+boardEl.addEventListener('mousedown', (e) => {
+  mouseStart = { x: e.clientX, y: e.clientY };
+});
+boardEl.addEventListener('mouseup', (e) => {
+  if (!mouseStart) return;
+  const dx = e.clientX - mouseStart.x;
+  const dy = e.clientY - mouseStart.y;
+  mouseStart = null;
+  if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    tilt(dx > 0 ? 'right' : 'left');
+  } else {
+    tilt(dy > 0 ? 'down' : 'up');
   }
 });
 
