@@ -146,18 +146,130 @@ function findRunsInLine(line, lineIndex, axis) {
   return runs;
 }
 
-// Returns Array<{ tiles: Set<"r,c">, length, color, center, hasRainbow }>
-// hasRainbow=true когда run содержит хотя бы один тайл-радугу (type -1).
-export function findMatches(board) {
-  const matches = [];
+// Внутренний хелпер: все прямые runs ≥3 (горизонталь + вертикаль).
+function findRawRuns(board) {
+  const runs = [];
   for (let r = 0; r < BOARD_SIZE; r++) {
-    matches.push(...findRunsInLine(board[r], r, 'h'));
+    runs.push(...findRunsInLine(board[r], r, 'h'));
   }
   for (let c = 0; c < BOARD_SIZE; c++) {
     const column = [];
     for (let r = 0; r < BOARD_SIZE; r++) column.push(board[r][c]);
-    matches.push(...findRunsInLine(column, c, 'v'));
+    runs.push(...findRunsInLine(column, c, 'v'));
   }
+  return runs;
+}
+
+// Returns Array<{ tiles: Set<"r,c">, length, color, center, hasRainbow }>
+//
+// Алгоритм:
+// 1. Находим все прямые runs ≥3 (через findRawRuns).
+// 2. Для каждого run flood-fill по 4-связности — собираем все соседние фишки
+//    того же цвета (плюс радуги-вайлдкарды) в связную компоненту.
+// 3. Если компонента ≥5 фишек — это одна "фигурная" фишка (Г, Т, +, L, и т.д.)
+//    длины = размер компоненты → даст радугу при m.length >= 5.
+// 4. Если компонента <5 — эмитим её прямые runs как отдельные матчи (старое
+//    поведение): прямые-3 и прямые-4 продолжают работать как раньше.
+//
+// length компоненты:
+//   3 → обычное удаление
+//   4 → бомба (взрывается мгновенно через game.js)
+//   5+ → радуга
+export function findMatches(board) {
+  const rawRuns = findRawRuns(board);
+  if (rawRuns.length === 0) return [];
+
+  const visited = new Set();
+  const components = [];
+
+  for (const run of rawRuns) {
+    // Если все клетки этого run уже в обработанной компоненте — пропускаем.
+    let hasUnvisited = false;
+    for (const k of run.tiles) {
+      if (!visited.has(k)) { hasUnvisited = true; break; }
+    }
+    if (!hasUnvisited) continue;
+
+    // Flood-fill 4-связности из неотмеченных клеток run.
+    const tiles = new Set();
+    let hasRainbow = false;
+    const stack = [];
+    for (const k of run.tiles) {
+      if (visited.has(k)) continue;
+      tiles.add(k);
+      stack.push(k);
+      const [r, c] = k.split(',').map(Number);
+      if (board[r][c] === -1) hasRainbow = true;
+    }
+
+    while (stack.length > 0) {
+      const key = stack.pop();
+      const [r, c] = key.split(',').map(Number);
+      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+        const nKey = `${nr},${nc}`;
+        if (tiles.has(nKey) || visited.has(nKey)) continue;
+        const nCell = board[nr][nc];
+        if (nCell === null) continue;
+        if (nCell === run.color || nCell === -1) {
+          tiles.add(nKey);
+          if (nCell === -1) hasRainbow = true;
+          stack.push(nKey);
+        }
+      }
+    }
+
+    // Собираем прямые runs, целиком лежащие в этой компоненте (для center).
+    const componentRuns = [];
+    for (const r of rawRuns) {
+      if (r.color !== run.color) continue;
+      let isSubset = true;
+      for (const k of r.tiles) {
+        if (!tiles.has(k)) { isSubset = false; break; }
+      }
+      if (isSubset) componentRuns.push(r);
+    }
+
+    components.push({ tiles, hasRainbow, runs: componentRuns, color: run.color });
+    for (const k of tiles) visited.add(k);
+  }
+
+  const matches = [];
+  for (const comp of components) {
+    if (comp.tiles.size >= 5) {
+      // Фигурный матч: одна запись, центр — у самого длинного прямого run внутри.
+      let bestRun = comp.runs[0];
+      for (const r of comp.runs) {
+        if (r.length > bestRun.length) bestRun = r;
+      }
+      matches.push({
+        tiles: comp.tiles,
+        length: comp.tiles.size,
+        color: comp.color,
+        center: bestRun.center,
+        hasRainbow: comp.hasRainbow,
+      });
+    } else {
+      // Маленькая компонента: эмитим прямые runs как отдельные матчи (как раньше).
+      for (const r of comp.runs) {
+        let runHasRainbow = false;
+        for (const k of r.tiles) {
+          const [rr, cc] = k.split(',').map(Number);
+          if (board[rr][cc] === -1) { runHasRainbow = true; break; }
+        }
+        matches.push({
+          tiles: new Set(r.tiles),
+          length: r.length,
+          color: r.color,
+          center: r.center,
+          hasRainbow: runHasRainbow,
+        });
+      }
+    }
+  }
+
   return matches;
 }
 

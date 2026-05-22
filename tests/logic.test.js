@@ -218,15 +218,63 @@ test('findMatches: two separate triples on same row', () => {
   assert.deepEqual(colors, [1, 2]);
 });
 
-test('findMatches: L-shape returns two overlapping matches', () => {
+test('findMatches: L-shape (3 horiz + 3 vert sharing corner) = one 5-match', () => {
   const board = createEmptyBoard();
   board[0][0] = 3; board[0][1] = 3; board[0][2] = 3;
   board[1][0] = 3; board[2][0] = 3;
   const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 5);
+  assert.equal(matches[0].color, 3);
+  assert.deepEqual([...matches[0].tiles].sort(), ['0,0', '0,1', '0,2', '1,0', '2,0']);
+});
+
+test('findMatches: T-shape (3 vert crossed by 3 horiz at middle) = one 5-match', () => {
+  const board = createEmptyBoard();
+  // Vertical 3 at col 2 rows 0-2
+  board[0][2] = 2; board[1][2] = 2; board[2][2] = 2;
+  // Horizontal extension at row 1 cols 1 and 3 (making (1,1)(1,2)(1,3) a 3-run)
+  board[1][1] = 2; board[1][3] = 2;
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 5);
+  assert.equal(matches[0].color, 2);
+});
+
+test('findMatches: 3-row + 1 adjacent same-color = match-3 (extra stays on board)', () => {
+  // 3 in a row of color 3, plus 1 same-color tile adjacent below the leftmost.
+  // Component size 4 → falls back to straight-line behavior (the lone tile is NOT in any run).
+  const board = createEmptyBoard();
+  board[0][0] = 3; board[0][1] = 3; board[0][2] = 3;
+  board[1][0] = 3;
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 3);
+  assert.equal(matches[0].color, 3);
+  assert.deepEqual([...matches[0].tiles].sort(), ['0,0', '0,1', '0,2']);
+});
+
+test('findMatches: 4-in-row + 1 adjacent same-color = one 5-match (rainbow trigger)', () => {
+  // 4-row at row 0 + 1 tile below = component size 5 → shape match length 5.
+  const board = createEmptyBoard();
+  board[0][0] = 1; board[0][1] = 1; board[0][2] = 1; board[0][3] = 1;
+  board[1][2] = 1;
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 5);
+  assert.equal(matches[0].color, 1);
+});
+
+test('findMatches: two disconnected 3-runs of same color → two separate matches', () => {
+  const board = createEmptyBoard();
+  board[0][0] = 2; board[0][1] = 2; board[0][2] = 2;
+  board[5][3] = 2; board[5][4] = 2; board[5][5] = 2;
+  const matches = findMatches(board);
   assert.equal(matches.length, 2);
-  const all = new Set();
-  for (const m of matches) for (const k of m.tiles) all.add(k);
-  assert.deepEqual([...all].sort(), ['0,0', '0,1', '0,2', '1,0', '2,0']);
+  for (const m of matches) {
+    assert.equal(m.length, 3);
+    assert.equal(m.color, 2);
+  }
 });
 
 test('findMatches: two in a row → no match', () => {
