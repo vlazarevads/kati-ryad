@@ -69,3 +69,37 @@ export function createInitialBoard() {
   }
   throw new Error('createInitialBoard: failed to generate non-triple board after 100 attempts');
 }
+
+// Returns a new board with all non-null tiles pushed to the given side.
+export function applyGravity(board, direction) {
+  const result = createEmptyBoard();
+
+  if (direction === 'left' || direction === 'right') {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      const tiles = board[r].filter(c => c !== null);
+      if (direction === 'left') {
+        for (let i = 0; i < tiles.length; i++) result[r][i] = tiles[i];
+      } else {
+        const offset = BOARD_SIZE - tiles.length;
+        for (let i = 0; i < tiles.length; i++) result[r][offset + i] = tiles[i];
+      }
+    }
+  } else if (direction === 'up' || direction === 'down') {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const tiles = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        if (board[r][c] !== null) tiles.push(board[r][c]);
+      }
+      if (direction === 'up') {
+        for (let i = 0; i < tiles.length; i++) result[i][c] = tiles[i];
+      } else {
+        const offset = BOARD_SIZE - tiles.length;
+        for (let i = 0; i < tiles.length; i++) result[offset + i][c] = tiles[i];
+      }
+    }
+  } else {
+    throw new Error(`applyGravity: unknown direction "${direction}"`);
+  }
+
+  return result;
+}
