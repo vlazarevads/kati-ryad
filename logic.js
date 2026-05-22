@@ -147,7 +147,7 @@ function findRunsInLine(line, lineIndex, axis) {
 }
 
 // Returns Array<{ tiles: Set<"r,c">, length, color, center, hasRainbow }>
-// hasRainbow всегда false на этом этапе — добавим поддержку wildcard в Task 2.
+// hasRainbow=true когда run содержит хотя бы один тайл-радугу (type -1).
 export function findMatches(board) {
   const matches = [];
   for (let r = 0; r < BOARD_SIZE; r++) {
