@@ -250,3 +250,22 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }
 }
+
+.tile.rainbow .tile-shape {
+  background: conic-gradient(
+    from 0deg,
+    var(--color-0) 0deg 90deg,
+    var(--color-1) 90deg 180deg,
+    var(--color-2) 180deg 270deg,
+    var(--color-3) 270deg 360deg
+  );
+  border-radius: 50%;
+  clip-path: none;
+  animation: rainbow-spin 3s linear infinite;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes rainbow-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

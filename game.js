@@ -305,9 +305,11 @@ async function tilt(direction) {
       for (let i = 0; i < matches.length; i++) {
         if (activatedMatches.has(i)) continue;
         const m = matches[i];
+        const [cr, cc] = m.center.split(',').map(Number);
         if (m.length === 4) {
-          const [cr, cc] = m.center.split(',').map(Number);
           state.board[cr][cc] = makeTile(m.color, 'bomb');
+        } else if (m.length >= 5) {
+          state.board[cr][cc] = makeTile(-1, 'rainbow');
         }
       }
 
