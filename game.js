@@ -186,7 +186,7 @@ function wrappedBoardsEqual(a, b) {
   return true;
 }
 
-// Returns Set<"r,c"> of match coords for the wrapped board.
+// Returns Array<MatchObject> from logic.findMatches, run on the type-only view.
 function findMatchesWrapped(board) {
   return findMatches(typesOf(board));
 }
