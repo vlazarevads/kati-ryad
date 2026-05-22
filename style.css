@@ -298,3 +298,15 @@ body {
   60%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
 }
+
+.board.shaking {
+  animation: shake 200ms ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(3px, -3px); }
+  60% { transform: translate(-2px, 3px); }
+  80% { transform: translate(3px, -1px); }
+}

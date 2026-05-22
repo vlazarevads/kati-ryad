@@ -141,6 +141,16 @@ function showComboToast(multiplier) {
   comboToastEl.classList.add('popping');
 }
 
+let shakeTimer = null;
+function triggerShake() {
+  boardEl.classList.remove('shaking');
+  // Force reflow для перезапуска анимации
+  void boardEl.offsetWidth;
+  boardEl.classList.add('shaking');
+  if (shakeTimer) clearTimeout(shakeTimer);
+  shakeTimer = setTimeout(() => boardEl.classList.remove('shaking'), 220);
+}
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -301,7 +311,9 @@ async function tilt(direction) {
           if (el) el.classList.add('removing');
         }
       }
+      const hadActivation = activatedMatches.size > 0;
       if (multiplier >= 2) showComboToast(multiplier);
+      if (multiplier >= 2 || hadActivation) triggerShake();
       state.score += scoreForWave(removeSet.size, multiplier);
       renderScore();
       multiplier++;
