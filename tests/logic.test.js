@@ -155,38 +155,57 @@ test('applyGravity preserves total tile count', () => {
 
 import { findMatches } from '../logic.js';
 
-function keysOf(set) {
-  return [...set].sort();
-}
-
-test('findMatches: empty board → empty set', () => {
+test('findMatches: empty board → empty array', () => {
   const matches = findMatches(createEmptyBoard());
-  assert.equal(matches.size, 0);
+  assert.deepEqual(matches, []);
 });
 
-test('findMatches: horizontal triple detected', () => {
+test('findMatches: horizontal triple returns one match', () => {
   const board = boardFromRows([
     [1, 1, 1, null, null, null],
   ]);
   const matches = findMatches(board);
-  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2']);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 3);
+  assert.equal(matches[0].color, 1);
+  assert.equal(matches[0].center, '0,1');
+  assert.deepEqual([...matches[0].tiles].sort(), ['0,0', '0,1', '0,2']);
+  assert.equal(matches[0].hasRainbow, false);
 });
 
-test('findMatches: vertical triple detected', () => {
+test('findMatches: vertical triple returns one match', () => {
   const board = createEmptyBoard();
   board[0][2] = 4;
   board[1][2] = 4;
   board[2][2] = 4;
   const matches = findMatches(board);
-  assert.deepEqual(keysOf(matches), ['0,2', '1,2', '2,2']);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 3);
+  assert.equal(matches[0].color, 4);
+  assert.equal(matches[0].center, '1,2');
+  assert.deepEqual([...matches[0].tiles].sort(), ['0,2', '1,2', '2,2']);
 });
 
-test('findMatches: 4 in a row detected (all 4 cells)', () => {
+test('findMatches: 4 in a row, center at index 2', () => {
   const board = boardFromRows([
     [2, 2, 2, 2, null, null],
   ]);
   const matches = findMatches(board);
-  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '0,3']);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 4);
+  assert.equal(matches[0].color, 2);
+  assert.equal(matches[0].center, '0,2');
+});
+
+test('findMatches: 5 in a row, center at index 2', () => {
+  const board = boardFromRows([
+    [3, 3, 3, 3, 3, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 5);
+  assert.equal(matches[0].color, 3);
+  assert.equal(matches[0].center, '0,2');
 });
 
 test('findMatches: two separate triples on same row', () => {
@@ -194,31 +213,31 @@ test('findMatches: two separate triples on same row', () => {
     [1, 1, 1, 2, 2, 2],
   ]);
   const matches = findMatches(board);
-  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '0,3', '0,4', '0,5']);
+  assert.equal(matches.length, 2);
+  const colors = matches.map(m => m.color).sort();
+  assert.deepEqual(colors, [1, 2]);
 });
 
-test('findMatches: L-shape (horizontal + vertical sharing a cell)', () => {
+test('findMatches: L-shape returns two overlapping matches', () => {
   const board = createEmptyBoard();
   board[0][0] = 3; board[0][1] = 3; board[0][2] = 3;
   board[1][0] = 3; board[2][0] = 3;
   const matches = findMatches(board);
-  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '1,0', '2,0']);
+  assert.equal(matches.length, 2);
+  const all = new Set();
+  for (const m of matches) for (const k of m.tiles) all.add(k);
+  assert.deepEqual([...all].sort(), ['0,0', '0,1', '0,2', '1,0', '2,0']);
 });
 
-test('findMatches: two in a row → not a match', () => {
+test('findMatches: two in a row → no match', () => {
   const board = boardFromRows([
     [1, 1, null, null, null, null],
   ]);
-  const matches = findMatches(board);
-  assert.equal(matches.size, 0);
+  assert.deepEqual(findMatches(board), []);
 });
 
 test('findMatches: nulls do not form matches', () => {
-  const board = boardFromRows([
-    [null, null, null, null, null, null],
-  ]);
-  const matches = findMatches(board);
-  assert.equal(matches.size, 0);
+  assert.deepEqual(findMatches(createEmptyBoard()), []);
 });
 
 import { resolveBoard, scoreForWave } from '../logic.js';

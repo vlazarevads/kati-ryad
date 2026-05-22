@@ -104,44 +104,46 @@ export function applyGravity(board, direction) {
   return result;
 }
 
-// Returns a Set of "r,c" strings — coordinates of all tiles in any match (3+ in a row).
+// Helper: scan a single line (row or column) for runs of length >= 3.
+// `line` — массив значений (type | null), `lineIndex` — индекс линии,
+// `axis` — 'h' для строки, 'v' для столбца. Возвращает массив матч-объектов.
+function findRunsInLine(line, lineIndex, axis) {
+  const runs = [];
+  const N = line.length;
+  let i = 0;
+  while (i < N) {
+    if (line[i] === null) { i++; continue; }
+    const anchor = line[i];
+    let j = i + 1;
+    while (j < N && line[j] === anchor) j++;
+    const length = j - i;
+    if (length >= 3) {
+      const tiles = new Set();
+      for (let k = i; k < j; k++) {
+        const coord = axis === 'h' ? `${lineIndex},${k}` : `${k},${lineIndex}`;
+        tiles.add(coord);
+      }
+      const centerIdx = i + Math.floor(length / 2);
+      const center = axis === 'h' ? `${lineIndex},${centerIdx}` : `${centerIdx},${lineIndex}`;
+      runs.push({ tiles, length, color: anchor, center, hasRainbow: false });
+    }
+    i = j;
+  }
+  return runs;
+}
+
+// Returns Array<{ tiles: Set<"r,c">, length, color, center, hasRainbow }>
+// hasRainbow всегда false на этом этапе — добавим поддержку wildcard в Task 2.
 export function findMatches(board) {
-  const matches = new Set();
-
-  // horizontal
+  const matches = [];
   for (let r = 0; r < BOARD_SIZE; r++) {
-    let run = 1;
-    for (let c = 1; c <= BOARD_SIZE; c++) {
-      const prev = board[r][c - 1];
-      const curr = c < BOARD_SIZE ? board[r][c] : null;
-      if (prev !== null && curr === prev) {
-        run++;
-      } else {
-        if (run >= 3 && prev !== null) {
-          for (let k = 0; k < run; k++) matches.add(`${r},${c - 1 - k}`);
-        }
-        run = 1;
-      }
-    }
+    matches.push(...findRunsInLine(board[r], r, 'h'));
   }
-
-  // vertical
   for (let c = 0; c < BOARD_SIZE; c++) {
-    let run = 1;
-    for (let r = 1; r <= BOARD_SIZE; r++) {
-      const prev = board[r - 1][c];
-      const curr = r < BOARD_SIZE ? board[r][c] : null;
-      if (prev !== null && curr === prev) {
-        run++;
-      } else {
-        if (run >= 3 && prev !== null) {
-          for (let k = 0; k < run; k++) matches.add(`${r - 1 - k},${c}`);
-        }
-        run = 1;
-      }
-    }
+    const column = [];
+    for (let r = 0; r < BOARD_SIZE; r++) column.push(board[r][c]);
+    matches.push(...findRunsInLine(column, c, 'v'));
   }
-
   return matches;
 }
 
@@ -175,17 +177,20 @@ export function resolveBoard(board, direction) {
 
   while (true) {
     const matches = findMatches(current);
-    if (matches.size === 0) break;
-    // Remove matched tiles
+    if (matches.length === 0) break;
+    // Union all match tiles into removal set
+    const removeSet = new Set();
+    for (const match of matches) {
+      for (const key of match.tiles) removeSet.add(key);
+    }
     const next = current.map(row => row.slice());
-    for (const key of matches) {
+    for (const key of removeSet) {
       const [r, c] = key.split(',').map(Number);
       next[r][c] = null;
     }
-    waves.push(matches.size);
-    score += scoreForWave(matches.size, multiplier);
+    waves.push(removeSet.size);
+    score += scoreForWave(removeSet.size, multiplier);
     multiplier++;
-    // Re-apply gravity in same direction for cascade
     current = applyGravity(next, direction);
   }
 
