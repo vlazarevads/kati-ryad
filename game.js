@@ -263,17 +263,17 @@ async function tilt(direction) {
         for (const key of match.tiles) initial.add(key);
       }
 
-      // Шаг 2: собрать позиции бомб (на всей доске) и радужные цвета из матчей.
+      // Шаг 2: match-4 взрывается сразу — центры match-4 трактуем как бомбы
+      // на эту волну. Это даёт мгновенный 3×3-взрыв через expandRemovalSet.
       const bombPositions = new Set();
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          const t = state.board[r][c];
-          if (t && t.special === 'bomb') bombPositions.add(`${r},${c}`);
-        }
+      for (const match of matches) {
+        if (match.length === 4) bombPositions.add(match.center);
       }
+
+      // Радужные цвета: если в матче есть тайл с special='rainbow',
+      // его color добавляется в список для color-burst через expandRemovalSet.
       const rainbowColors = [];
       for (const match of matches) {
-        // если в initial есть rainbow-тайл этого матча — добавить match.color
         for (const key of match.tiles) {
           const [r, c] = key.split(',').map(Number);
           const t = state.board[r][c];
@@ -284,11 +284,11 @@ async function tilt(direction) {
         }
       }
 
-      // Шаг 3: расширить removeSet через бомбы/радуги.
+      // Шаг 3: расширить removeSet через мгновенные взрывы match-4 и радужные взрывы.
       const typed = typesOf(state.board);
       const removeSet = expandRemovalSet(initial, typed, bombPositions, rainbowColors);
 
-      // Шаг 4: определить какие матчи "активировали" спец-фишки (чтобы не плодить новые).
+      // Шаг 4: определить какие матчи "активировали" радугу (чтобы не плодить новую).
       const activatedMatches = new Set();
       for (let i = 0; i < matches.length; i++) {
         const m = matches[i];
@@ -311,9 +311,10 @@ async function tilt(direction) {
           if (el) el.classList.add('removing');
         }
       }
+      const hadMatch4Plus = matches.some(m => m.length >= 4);
       const hadActivation = activatedMatches.size > 0;
       if (multiplier >= 2) showComboToast(multiplier);
-      if (multiplier >= 2 || hadActivation) triggerShake();
+      if (multiplier >= 2 || hadActivation || hadMatch4Plus) triggerShake();
       state.score += scoreForWave(removeSet.size, multiplier);
       renderScore();
       multiplier++;
@@ -325,14 +326,13 @@ async function tilt(direction) {
         state.board[r][c] = null;
       }
 
-      // Шаг 7: спавнить спец-фишки для match-4 (без активации в этом матче).
+      // Шаг 7: спавнить радугу для match-5+ (без активации в этом матче).
+      // Match-4 уже сработал мгновенно через bombPositions выше, ничего не оставляет.
       for (let i = 0; i < matches.length; i++) {
         if (activatedMatches.has(i)) continue;
         const m = matches[i];
-        const [cr, cc] = m.center.split(',').map(Number);
-        if (m.length === 4) {
-          state.board[cr][cc] = makeTile(m.color, 'bomb');
-        } else if (m.length >= 5) {
+        if (m.length >= 5) {
+          const [cr, cc] = m.center.split(',').map(Number);
           state.board[cr][cc] = makeTile(-1, 'rainbow');
         }
       }
