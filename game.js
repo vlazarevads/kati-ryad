@@ -1,6 +1,9 @@
 import {
   BOARD_SIZE,
   createInitialBoard,
+  findMatches,
+  isGameOver,
+  scoreForWave,
 } from './logic.js';
 
 const boardEl = document.getElementById('board');
@@ -97,5 +100,162 @@ function init() {
   state.isGameOver = false;
   render();
 }
+
+const STEP_MS = 220; // matches CSS transitions
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function typesOf(board) {
+  // strip ids: { id, type } | null → type | null
+  return board.map(row => row.map(cell => cell === null ? null : cell.type));
+}
+
+// Apply gravity to the WRAPPED board (preserving tile objects + ids).
+// This is the rendering-aware counterpart to logic.applyGravity.
+function gravityWrapped(board, direction) {
+  const empty = () => Array.from({length: BOARD_SIZE}, () => Array(BOARD_SIZE).fill(null));
+  const result = empty();
+
+  if (direction === 'left' || direction === 'right') {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      const tiles = board[r].filter(c => c !== null);
+      if (direction === 'left') {
+        for (let i = 0; i < tiles.length; i++) result[r][i] = tiles[i];
+      } else {
+        const offset = BOARD_SIZE - tiles.length;
+        for (let i = 0; i < tiles.length; i++) result[r][offset + i] = tiles[i];
+      }
+    }
+  } else {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const tiles = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        if (board[r][c] !== null) tiles.push(board[r][c]);
+      }
+      if (direction === 'up') {
+        for (let i = 0; i < tiles.length; i++) result[i][c] = tiles[i];
+      } else {
+        const offset = BOARD_SIZE - tiles.length;
+        for (let i = 0; i < tiles.length; i++) result[offset + i][c] = tiles[i];
+      }
+    }
+  }
+  return result;
+}
+
+function wrappedBoardsEqual(a, b) {
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const av = a[r][c]?.id ?? null;
+      const bv = b[r][c]?.id ?? null;
+      if (av !== bv) return false;
+    }
+  }
+  return true;
+}
+
+// Returns Set<"r,c"> of match coords for the wrapped board.
+function findMatchesWrapped(board) {
+  return findMatches(typesOf(board));
+}
+
+// Returns true if any of 4 tilts would move tiles.
+function isGameOverWrapped(board) {
+  return isGameOver(typesOf(board));
+}
+
+// Spawn into wrapped board: replicate spawnTiles logic but produce { id, type }.
+function spawnWrapped(board) {
+  const result = board.map(row => row.slice());
+  const empties = [];
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (result[r][c] === null) empties.push([r, c]);
+    }
+  }
+  for (let i = empties.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [empties[i], empties[j]] = [empties[j], empties[i]];
+  }
+  const toSpawn = Math.min(3, empties.length); // SPAWN_PER_TURN = 3
+  for (let i = 0; i < toSpawn; i++) {
+    const [r, c] = empties[i];
+    result[r][c] = makeTile(Math.floor(Math.random() * 5)); // NUM_TYPES = 5
+  }
+  return result;
+}
+
+async function tilt(direction) {
+  if (state.isAnimating || state.isGameOver) return;
+
+  // Step 1: gravity (animated). If nothing moves, abort.
+  const afterGravity = gravityWrapped(state.board, direction);
+  if (wrappedBoardsEqual(state.board, afterGravity)) return;
+
+  state.isAnimating = true;
+  state.board = afterGravity;
+  render();
+  await delay(STEP_MS);
+
+  // Step 2: cascade matches
+  let multiplier = 1;
+  while (true) {
+    const matches = findMatchesWrapped(state.board);
+    if (matches.size === 0) break;
+
+    // Mark tiles for removal (animation), then actually remove
+    for (const key of matches) {
+      const [r, c] = key.split(',').map(Number);
+      const tile = state.board[r][c];
+      if (tile) {
+        const el = tileEls.get(tile.id);
+        if (el) el.classList.add('removing');
+      }
+    }
+    state.score += scoreForWave(matches.size, multiplier);
+    renderScore();
+    multiplier++;
+    await delay(STEP_MS);
+
+    // Remove from state.board
+    for (const key of matches) {
+      const [r, c] = key.split(',').map(Number);
+      state.board[r][c] = null;
+    }
+    // Re-apply gravity in same direction
+    state.board = gravityWrapped(state.board, direction);
+    render();
+    await delay(STEP_MS);
+  }
+
+  // Step 3: spawn new tiles
+  state.board = spawnWrapped(state.board);
+  render();
+  await delay(STEP_MS);
+
+  // Step 4: check game over
+  if (isGameOverWrapped(state.board)) {
+    state.isGameOver = true;
+    showGameOver();
+  }
+
+  state.isAnimating = false;
+}
+
+function showGameOver() {
+  // Filled in in Task 13
+  console.log('GAME OVER, final score:', state.score);
+}
+
+window.addEventListener('keydown', (e) => {
+  const key = e.key;
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+  if (map[key]) {
+    e.preventDefault();
+    tilt(map[key]);
+  }
+});
 
 init();
