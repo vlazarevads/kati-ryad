@@ -108,24 +108,38 @@ export function applyGravity(board, direction) {
 // `line` — массив значений (type | null), `lineIndex` — индекс линии,
 // `axis` — 'h' для строки, 'v' для столбца. Возвращает массив матч-объектов.
 function findRunsInLine(line, lineIndex, axis) {
+  const RAINBOW = -1;
   const runs = [];
   const N = line.length;
   let i = 0;
   while (i < N) {
     if (line[i] === null) { i++; continue; }
-    const anchor = line[i];
+    // Сегмент non-null фишек начинается в i. Идём вправо, пока:
+    // - все встреченные не-rainbow фишки имеют один и тот же anchor color
+    let anchor = line[i] === RAINBOW ? null : line[i];
     let j = i + 1;
-    while (j < N && line[j] === anchor) j++;
+    while (j < N && line[j] !== null) {
+      if (line[j] === RAINBOW) {
+        // rainbow — продолжаем
+      } else if (anchor === null) {
+        anchor = line[j];
+      } else if (line[j] !== anchor) {
+        break;
+      }
+      j++;
+    }
     const length = j - i;
-    if (length >= 3) {
+    if (length >= 3 && anchor !== null) {
       const tiles = new Set();
+      let hasRainbow = false;
       for (let k = i; k < j; k++) {
         const coord = axis === 'h' ? `${lineIndex},${k}` : `${k},${lineIndex}`;
         tiles.add(coord);
+        if (line[k] === RAINBOW) hasRainbow = true;
       }
       const centerIdx = i + Math.floor(length / 2);
       const center = axis === 'h' ? `${lineIndex},${centerIdx}` : `${centerIdx},${lineIndex}`;
-      runs.push({ tiles, length, color: anchor, center, hasRainbow: false });
+      runs.push({ tiles, length, color: anchor, center, hasRainbow });
     }
     i = j;
   }

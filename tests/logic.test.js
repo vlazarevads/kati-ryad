@@ -240,6 +240,68 @@ test('findMatches: nulls do not form matches', () => {
   assert.deepEqual(findMatches(createEmptyBoard()), []);
 });
 
+test('findMatches with rainbow: A R A counts as 3-match color A', () => {
+  // -1 — это радуга (wildcard)
+  const board = boardFromRows([
+    [1, -1, 1, null, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 3);
+  assert.equal(matches[0].color, 1);
+  assert.equal(matches[0].hasRainbow, true);
+});
+
+test('findMatches with rainbow: R A A A counts as 4-match color A', () => {
+  const board = boardFromRows([
+    [-1, 2, 2, 2, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 4);
+  assert.equal(matches[0].color, 2);
+  assert.equal(matches[0].hasRainbow, true);
+  assert.deepEqual([...matches[0].tiles].sort(), ['0,0', '0,1', '0,2', '0,3']);
+});
+
+test('findMatches with rainbow: A A R B B → splits into two non-matches (greedy left-to-right)', () => {
+  // [A, A, R, B, B] — A,A,R = 3-match? Greedy: anchor=A, R extends, B breaks. So [A,A,R] length 3 color A.
+  // Then [B,B] length 2 — no match.
+  const board = boardFromRows([
+    [1, 1, -1, 2, 2, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 3);
+  assert.equal(matches[0].color, 1);
+  assert.equal(matches[0].hasRainbow, true);
+});
+
+test('findMatches with rainbow: only rainbows → not a match', () => {
+  const board = boardFromRows([
+    [-1, -1, -1, null, null, null],
+  ]);
+  assert.deepEqual(findMatches(board), []);
+});
+
+test('findMatches with rainbow: R A R A R → 5-match color A', () => {
+  // Greedy: anchor=null initially (first is R). Then A sets anchor=A. R extends. A matches. R extends. End.
+  const board = boardFromRows([
+    [-1, 1, -1, 1, -1, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].length, 5);
+  assert.equal(matches[0].color, 1);
+  assert.equal(matches[0].hasRainbow, true);
+});
+
+test('findMatches without rainbow: hasRainbow flag is false', () => {
+  const board = boardFromRows([[3, 3, 3, null, null, null]]);
+  const matches = findMatches(board);
+  assert.equal(matches[0].hasRainbow, false);
+});
+
 import { resolveBoard, scoreForWave } from '../logic.js';
 
 test('scoreForWave: 3 tiles wave 1 (multiplier 1) → 30', () => {
