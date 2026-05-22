@@ -144,3 +144,50 @@ export function findMatches(board) {
 
   return matches;
 }
+
+export function scoreForWave(tilesRemoved, multiplier) {
+  return 10 * tilesRemoved * multiplier;
+}
+
+// Helper: deep-compare two boards.
+function boardsEqual(a, b) {
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (a[r][c] !== b[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+// One full tilt. Returns:
+//   { moved: bool, board: newBoard, score: int, waves: [tilesRemoved per wave] }
+// If initial gravity does not move anything, returns { moved: false, board, score: 0, waves: [] }.
+export function resolveBoard(board, direction) {
+  const afterGravity = applyGravity(board, direction);
+  if (boardsEqual(board, afterGravity)) {
+    return { moved: false, board, score: 0, waves: [] };
+  }
+
+  let current = afterGravity;
+  const waves = [];
+  let score = 0;
+  let multiplier = 1;
+
+  while (true) {
+    const matches = findMatches(current);
+    if (matches.size === 0) break;
+    // Remove matched tiles
+    const next = current.map(row => row.slice());
+    for (const key of matches) {
+      const [r, c] = key.split(',').map(Number);
+      next[r][c] = null;
+    }
+    waves.push(matches.size);
+    score += scoreForWave(matches.size, multiplier);
+    multiplier++;
+    // Re-apply gravity in same direction for cascade
+    current = applyGravity(next, direction);
+  }
+
+  return { moved: true, board: current, score, waves };
+}

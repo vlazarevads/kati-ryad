@@ -220,3 +220,81 @@ test('findMatches: nulls do not form matches', () => {
   const matches = findMatches(board);
   assert.equal(matches.size, 0);
 });
+
+import { resolveBoard, scoreForWave } from '../logic.js';
+
+test('scoreForWave: 3 tiles wave 1 (multiplier 1) → 30', () => {
+  assert.equal(scoreForWave(3, 1), 30);
+});
+
+test('scoreForWave: 4 tiles wave 2 (multiplier 2) → 80', () => {
+  assert.equal(scoreForWave(4, 2), 80);
+});
+
+test('scoreForWave: 5 tiles wave 3 (multiplier 3) → 150', () => {
+  assert.equal(scoreForWave(5, 3), 150);
+});
+
+test('resolveBoard: no movement → moved=false, no score', () => {
+  // single tile in corner, tilt towards that corner → no movement
+  const board = createEmptyBoard();
+  board[0][0] = 1;
+  const result = resolveBoard(board, 'left');
+  assert.equal(result.moved, false);
+  assert.equal(result.score, 0);
+  assert.equal(result.waves.length, 0);
+});
+
+test('resolveBoard: simple match in one wave', () => {
+  // three tiles of same type spaced out, gravity left → they collide, match
+  const board = boardFromRows([
+    [1, null, 1, null, 1, null],
+  ]);
+  const result = resolveBoard(board, 'left');
+  assert.equal(result.moved, true);
+  assert.equal(result.waves.length, 1);
+  assert.equal(result.waves[0], 3); // 3 tiles removed in first wave
+  assert.equal(result.score, 30); // 3 * 10 * 1
+  // board should have no tiles in the result row 0
+  for (let c = 0; c < BOARD_SIZE; c++) {
+    assert.equal(result.board[0][c], null);
+  }
+});
+
+test('resolveBoard: 2-wave cascade scores with combo multiplier', () => {
+  // Carefully constructed cascade: tilt down on a board where
+  //   col 0 has C, B, B, B (top to bottom)
+  //   cols 1 and 2 have C at row 5
+  // After initial gravity-down:
+  //   row 2 col 0 = C, rows 3,4,5 col 0 = B,B,B (vertical triple)
+  //   row 5: [B, C, C, ...]
+  // Wave 1: 3 B's removed (multiplier 1 → +30)
+  // Re-gravity: col 0's surviving C falls to row 5 → row 5 = [C, C, C, ...]
+  // Wave 2: 3 C's removed (multiplier 2 → +60)
+  // Total: 90
+  const board = createEmptyBoard();
+  board[0][0] = 2; // C
+  board[1][0] = 1; // B
+  board[2][0] = 1; // B
+  board[3][0] = 1; // B
+  board[5][1] = 2; // C
+  board[5][2] = 2; // C
+  const result = resolveBoard(board, 'down');
+  assert.equal(result.moved, true);
+  assert.equal(result.waves.length, 2);
+  assert.equal(result.waves[0], 3);
+  assert.equal(result.waves[1], 3);
+  assert.equal(result.score, 90);
+});
+
+test('resolveBoard: pre-existing match without movement does NOT trigger (turn ignored)', () => {
+  // Three tiles already aligned at the left edge, tilt left → nothing moves
+  const board = boardFromRows([
+    [1, 1, 1, null, null, null],
+  ]);
+  const result = resolveBoard(board, 'left');
+  assert.equal(result.moved, false);
+  // No score, no waves
+  assert.equal(result.score, 0);
+  assert.equal(result.waves.length, 0);
+});
