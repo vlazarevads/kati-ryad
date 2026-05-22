@@ -215,53 +215,55 @@ async function tilt(direction) {
   if (wrappedBoardsEqual(state.board, afterGravity)) return;
 
   state.isAnimating = true;
-  state.board = afterGravity;
-  render();
-  await delay(STEP_MS);
-
-  // Step 2: cascade matches
-  let multiplier = 1;
-  while (true) {
-    const matches = findMatchesWrapped(state.board);
-    if (matches.size === 0) break;
-
-    // Mark tiles for removal (animation), then actually remove
-    for (const key of matches) {
-      const [r, c] = key.split(',').map(Number);
-      const tile = state.board[r][c];
-      if (tile) {
-        const el = tileEls.get(tile.id);
-        if (el) el.classList.add('removing');
-      }
-    }
-    state.score += scoreForWave(matches.size, multiplier);
-    renderScore();
-    multiplier++;
-    await delay(STEP_MS);
-
-    // Remove from state.board
-    for (const key of matches) {
-      const [r, c] = key.split(',').map(Number);
-      state.board[r][c] = null;
-    }
-    // Re-apply gravity in same direction
-    state.board = gravityWrapped(state.board, direction);
+  try {
+    state.board = afterGravity;
     render();
     await delay(STEP_MS);
+
+    // Step 2: cascade matches
+    let multiplier = 1;
+    while (true) {
+      const matches = findMatchesWrapped(state.board);
+      if (matches.size === 0) break;
+
+      // Mark tiles for removal (animation), then actually remove
+      for (const key of matches) {
+        const [r, c] = key.split(',').map(Number);
+        const tile = state.board[r][c];
+        if (tile) {
+          const el = tileEls.get(tile.id);
+          if (el) el.classList.add('removing');
+        }
+      }
+      state.score += scoreForWave(matches.size, multiplier);
+      renderScore();
+      multiplier++;
+      await delay(STEP_MS);
+
+      // Remove from state.board
+      for (const key of matches) {
+        const [r, c] = key.split(',').map(Number);
+        state.board[r][c] = null;
+      }
+      // Re-apply gravity in same direction
+      state.board = gravityWrapped(state.board, direction);
+      render();
+      await delay(STEP_MS);
+    }
+
+    // Step 3: spawn new tiles
+    state.board = spawnWrapped(state.board);
+    render();
+    await delay(STEP_MS);
+
+    // Step 4: check game over
+    if (isGameOverWrapped(state.board)) {
+      state.isGameOver = true;
+      showGameOver();
+    }
+  } finally {
+    state.isAnimating = false;
   }
-
-  // Step 3: spawn new tiles
-  state.board = spawnWrapped(state.board);
-  render();
-  await delay(STEP_MS);
-
-  // Step 4: check game over
-  if (isGameOverWrapped(state.board)) {
-    state.isGameOver = true;
-    showGameOver();
-  }
-
-  state.isAnimating = false;
 }
 
 const gameOverEl = document.getElementById('game-over');
