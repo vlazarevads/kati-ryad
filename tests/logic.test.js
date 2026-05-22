@@ -152,3 +152,71 @@ test('applyGravity preserves total tile count', () => {
     assert.equal(after, before, `direction ${dir}`);
   }
 });
+
+import { findMatches } from '../logic.js';
+
+function keysOf(set) {
+  return [...set].sort();
+}
+
+test('findMatches: empty board → empty set', () => {
+  const matches = findMatches(createEmptyBoard());
+  assert.equal(matches.size, 0);
+});
+
+test('findMatches: horizontal triple detected', () => {
+  const board = boardFromRows([
+    [1, 1, 1, null, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2']);
+});
+
+test('findMatches: vertical triple detected', () => {
+  const board = createEmptyBoard();
+  board[0][2] = 4;
+  board[1][2] = 4;
+  board[2][2] = 4;
+  const matches = findMatches(board);
+  assert.deepEqual(keysOf(matches), ['0,2', '1,2', '2,2']);
+});
+
+test('findMatches: 4 in a row detected (all 4 cells)', () => {
+  const board = boardFromRows([
+    [2, 2, 2, 2, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '0,3']);
+});
+
+test('findMatches: two separate triples on same row', () => {
+  const board = boardFromRows([
+    [1, 1, 1, 2, 2, 2],
+  ]);
+  const matches = findMatches(board);
+  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '0,3', '0,4', '0,5']);
+});
+
+test('findMatches: L-shape (horizontal + vertical sharing a cell)', () => {
+  const board = createEmptyBoard();
+  board[0][0] = 3; board[0][1] = 3; board[0][2] = 3;
+  board[1][0] = 3; board[2][0] = 3;
+  const matches = findMatches(board);
+  assert.deepEqual(keysOf(matches), ['0,0', '0,1', '0,2', '1,0', '2,0']);
+});
+
+test('findMatches: two in a row → not a match', () => {
+  const board = boardFromRows([
+    [1, 1, null, null, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.size, 0);
+});
+
+test('findMatches: nulls do not form matches', () => {
+  const board = boardFromRows([
+    [null, null, null, null, null, null],
+  ]);
+  const matches = findMatches(board);
+  assert.equal(matches.size, 0);
+});

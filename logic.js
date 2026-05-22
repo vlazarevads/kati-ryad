@@ -103,3 +103,44 @@ export function applyGravity(board, direction) {
 
   return result;
 }
+
+// Returns a Set of "r,c" strings — coordinates of all tiles in any match (3+ in a row).
+export function findMatches(board) {
+  const matches = new Set();
+
+  // horizontal
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    let run = 1;
+    for (let c = 1; c <= BOARD_SIZE; c++) {
+      const prev = board[r][c - 1];
+      const curr = c < BOARD_SIZE ? board[r][c] : null;
+      if (prev !== null && curr === prev) {
+        run++;
+      } else {
+        if (run >= 3 && prev !== null) {
+          for (let k = 0; k < run; k++) matches.add(`${r},${c - 1 - k}`);
+        }
+        run = 1;
+      }
+    }
+  }
+
+  // vertical
+  for (let c = 0; c < BOARD_SIZE; c++) {
+    let run = 1;
+    for (let r = 1; r <= BOARD_SIZE; r++) {
+      const prev = board[r - 1][c];
+      const curr = r < BOARD_SIZE ? board[r][c] : null;
+      if (prev !== null && curr === prev) {
+        run++;
+      } else {
+        if (run >= 3 && prev !== null) {
+          for (let k = 0; k < run; k++) matches.add(`${r - 1 - k},${c}`);
+        }
+        run = 1;
+      }
+    }
+  }
+
+  return matches;
+}
