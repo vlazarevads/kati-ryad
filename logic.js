@@ -240,3 +240,55 @@ export function isGameOver(board) {
   }
   return true;
 }
+
+// Расширяет множество удаления с учётом бомб (3x3 + цепочка) и радуг (цветовой взрыв).
+// Аргументы:
+//   initial: Set<"r,c"> — начальное множество (тайлы из матча)
+//   board: 2D type array — для поиска тайлов нужного цвета (rainbow color-burst)
+//   bombPositions: Set<"r,c"> — координаты всех бомб на поле (включая те, что не в initial)
+//   rainbowColors: number[] — цвета матчей, в которых были активированы радуги
+// Возвращает новый Set<"r,c"> с расширениями.
+export function expandRemovalSet(initial, board, bombPositions, rainbowColors) {
+  const result = new Set(initial);
+
+  // 1. Rainbow color-burst (один раз, в начале): для каждого цвета — добавить все клетки этого цвета.
+  for (const color of rainbowColors) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c] === color) {
+          result.add(`${r},${c}`);
+        }
+      }
+    }
+  }
+
+  // 2. Bomb chain reaction: пока есть бомбы в result, которые ещё не "взорвали" соседей — расширяем.
+  const exploded = new Set();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const key of [...result]) {
+      if (bombPositions.has(key) && !exploded.has(key)) {
+        exploded.add(key);
+        const [br, bc] = key.split(',').map(Number);
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const r = br + dr;
+            const c = bc + dc;
+            if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) continue;
+            const newKey = `${r},${c}`;
+            if (!result.has(newKey)) {
+              result.add(newKey);
+              changed = true;
+            } else if (bombPositions.has(newKey) && !exploded.has(newKey)) {
+              // bomb уже в result, но ещё не взорван — нужен ещё один проход
+              changed = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}

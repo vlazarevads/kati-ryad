@@ -449,3 +449,108 @@ test('isGameOver: board with empty cells → false (at least one tilt moves)', (
   board[2][2] = 1;
   assert.equal(isGameOver(board), false);
 });
+
+import { expandRemovalSet } from '../logic.js';
+
+test('expandRemovalSet: empty initial, no bombs/rainbows → empty', () => {
+  const board = createEmptyBoard();
+  const result = expandRemovalSet(new Set(), board, new Set(), []);
+  assert.equal(result.size, 0);
+});
+
+test('expandRemovalSet: no bombs/rainbows → returns initial unchanged', () => {
+  const board = createEmptyBoard();
+  board[2][2] = 1;
+  const initial = new Set(['2,2']);
+  const result = expandRemovalSet(initial, board, new Set(), []);
+  assert.deepEqual([...result].sort(), ['2,2']);
+});
+
+test('expandRemovalSet: bomb in center → adds 3x3 around it', () => {
+  const board = createEmptyBoard();
+  // Place tiles in 3x3 around (2,2)
+  for (let r = 1; r <= 3; r++) {
+    for (let c = 1; c <= 3; c++) {
+      board[r][c] = 0;
+    }
+  }
+  const initial = new Set(['2,2']);
+  const bombs = new Set(['2,2']);
+  const result = expandRemovalSet(initial, board, bombs, []);
+  // Should include all 9 cells of 3x3 around (2,2)
+  const expected = [];
+  for (let r = 1; r <= 3; r++) {
+    for (let c = 1; c <= 3; c++) {
+      expected.push(`${r},${c}`);
+    }
+  }
+  assert.deepEqual([...result].sort(), expected.sort());
+});
+
+test('expandRemovalSet: bomb in corner → clamps to board bounds', () => {
+  const board = createEmptyBoard();
+  const initial = new Set(['0,0']);
+  const bombs = new Set(['0,0']);
+  const result = expandRemovalSet(initial, board, bombs, []);
+  // 3x3 around (0,0) clamped: (0,0), (0,1), (1,0), (1,1)
+  assert.deepEqual([...result].sort(), ['0,0', '0,1', '1,0', '1,1']);
+});
+
+test('expandRemovalSet: chain reaction when bomb 3x3 contains another bomb', () => {
+  const board = createEmptyBoard();
+  // Bomb at (0,0). Another bomb at (1,1). Chain: (0,0) explodes 3x3, including (1,1).
+  // Then (1,1) explodes 3x3, including (0,0..2,2).
+  const initial = new Set(['0,0']);
+  const bombs = new Set(['0,0', '1,1']);
+  const result = expandRemovalSet(initial, board, bombs, []);
+  // Final set: 3x3 around (0,0) + 3x3 around (1,1) = (0,0..2,2) ∪ extras
+  // Around (0,0) clamped: (0,0),(0,1),(1,0),(1,1)
+  // Around (1,1): (0,0)..(2,2) = all 9 in that block
+  // Union: (0,0)..(2,2)
+  const expected = [];
+  for (let r = 0; r <= 2; r++) {
+    for (let c = 0; c <= 2; c++) {
+      expected.push(`${r},${c}`);
+    }
+  }
+  assert.deepEqual([...result].sort(), expected.sort());
+});
+
+test('expandRemovalSet: rainbow color-burst adds all tiles of that color', () => {
+  const board = createEmptyBoard();
+  board[0][0] = 1; // color 1
+  board[0][5] = 1;
+  board[3][2] = 1;
+  board[5][5] = 1;
+  board[2][2] = 2; // different color, not affected
+  const initial = new Set(['1,1']); // rainbow itself is in initial
+  const rainbowColors = [1];
+  const result = expandRemovalSet(initial, board, new Set(), rainbowColors);
+  assert.ok(result.has('1,1'), 'initial preserved');
+  assert.ok(result.has('0,0'));
+  assert.ok(result.has('0,5'));
+  assert.ok(result.has('3,2'));
+  assert.ok(result.has('5,5'));
+  assert.ok(!result.has('2,2'), 'different-color tile not removed');
+});
+
+test('expandRemovalSet: rainbow color-burst triggers bombs in burst', () => {
+  // Rainbow triggers color 1. Bomb of color 1 is at (3,3). Bomb's 3x3 should expand.
+  const board = createEmptyBoard();
+  board[0][0] = 1;
+  board[3][3] = 1; // this position is also a bomb
+  const initial = new Set(['2,2']); // rainbow position
+  const bombs = new Set(['3,3']);
+  const rainbowColors = [1];
+  const result = expandRemovalSet(initial, board, bombs, rainbowColors);
+  // (0,0) added by rainbow. (3,3) added by rainbow → triggers bomb → adds (2,2..4,4) range
+  assert.ok(result.has('2,2'));
+  assert.ok(result.has('0,0'));
+  assert.ok(result.has('3,3'));
+  // Bomb at (3,3) explodes 3x3 → adds (2,2)..(4,4)
+  for (let r = 2; r <= 4; r++) {
+    for (let c = 2; c <= 4; c++) {
+      assert.ok(result.has(`${r},${c}`), `expected ${r},${c}`);
+    }
+  }
+});
