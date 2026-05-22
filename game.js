@@ -6,6 +6,7 @@ import {
   findMatches,
   isGameOver,
   scoreForWave,
+  expandRemovalSet,
 } from './logic.js';
 
 const boardEl = document.getElementById('board');
@@ -16,8 +17,10 @@ const bestEl = document.getElementById('best');
 // Stable ids let us animate tile movement (DOM elements persist across re-renders).
 let nextTileId = 1;
 
-function makeTile(type) {
-  return { id: nextTileId++, type };
+function makeTile(type, special) {
+  const tile = { id: nextTileId++, type };
+  if (special) tile.special = special;
+  return tile;
 }
 
 const state = {
@@ -83,6 +86,8 @@ function renderTiles() {
       if (!el) {
         el = document.createElement('div');
         el.className = `tile tile-${tile.type} spawning`;
+        if (tile.special === 'bomb') el.classList.add('bomb');
+        if (tile.special === 'rainbow') el.classList.add('rainbow');
         const shape = document.createElement('div');
         shape.className = 'tile-shape';
         el.appendChild(shape);
@@ -130,8 +135,11 @@ function delay(ms) {
 }
 
 function typesOf(board) {
-  // strip ids: { id, type } | null → type | null
-  return board.map(row => row.map(cell => cell === null ? null : cell.type));
+  return board.map(row => row.map(cell => {
+    if (cell === null) return null;
+    if (cell.special === 'rainbow') return -1;
+    return cell.type;
+  }));
 }
 
 // Apply gravity to the WRAPPED board (preserving tile objects + ids).
@@ -228,13 +236,52 @@ async function tilt(direction) {
       const matches = findMatchesWrapped(state.board);
       if (matches.length === 0) break;
 
-      // Union all match tiles into removal set
-      const removeSet = new Set();
+      // Шаг 1: собрать начальный removeSet из тайлов матчей.
+      const initial = new Set();
       for (const match of matches) {
-        for (const key of match.tiles) removeSet.add(key);
+        for (const key of match.tiles) initial.add(key);
       }
 
-      // Mark tiles for removal (animation), then actually remove
+      // Шаг 2: собрать позиции бомб (на всей доске) и радужные цвета из матчей.
+      const bombPositions = new Set();
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const t = state.board[r][c];
+          if (t && t.special === 'bomb') bombPositions.add(`${r},${c}`);
+        }
+      }
+      const rainbowColors = [];
+      for (const match of matches) {
+        // если в initial есть rainbow-тайл этого матча — добавить match.color
+        for (const key of match.tiles) {
+          const [r, c] = key.split(',').map(Number);
+          const t = state.board[r][c];
+          if (t && t.special === 'rainbow') {
+            rainbowColors.push(match.color);
+            break; // одна радуга в матче — достаточно
+          }
+        }
+      }
+
+      // Шаг 3: расширить removeSet через бомбы/радуги.
+      const typed = typesOf(state.board);
+      const removeSet = expandRemovalSet(initial, typed, bombPositions, rainbowColors);
+
+      // Шаг 4: определить какие матчи "активировали" спец-фишки (чтобы не плодить новые).
+      const activatedMatches = new Set();
+      for (let i = 0; i < matches.length; i++) {
+        const m = matches[i];
+        for (const key of m.tiles) {
+          const [r, c] = key.split(',').map(Number);
+          const t = state.board[r][c];
+          if (t && t.special) {
+            activatedMatches.add(i);
+            break;
+          }
+        }
+      }
+
+      // Шаг 5: пометить тайлы для анимации удаления.
       for (const key of removeSet) {
         const [r, c] = key.split(',').map(Number);
         const tile = state.board[r][c];
@@ -248,12 +295,23 @@ async function tilt(direction) {
       multiplier++;
       await delay(STEP_MS);
 
-      // Remove from state.board
+      // Шаг 6: реально убрать тайлы.
       for (const key of removeSet) {
         const [r, c] = key.split(',').map(Number);
         state.board[r][c] = null;
       }
-      // Re-apply gravity in same direction
+
+      // Шаг 7: спавнить спец-фишки для match-4 (без активации в этом матче).
+      for (let i = 0; i < matches.length; i++) {
+        if (activatedMatches.has(i)) continue;
+        const m = matches[i];
+        if (m.length === 4) {
+          const [cr, cc] = m.center.split(',').map(Number);
+          state.board[cr][cc] = makeTile(m.color, 'bomb');
+        }
+      }
+
+      // Шаг 8: гравитация в ту же сторону.
       state.board = gravityWrapped(state.board, direction);
       render();
       await delay(STEP_MS);
